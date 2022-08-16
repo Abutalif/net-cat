@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"os"
 )
@@ -61,7 +62,7 @@ func ServerMode() error {
 		users[i] = conn
 		i++
 
-		go HandleNewUser(conn, user)
+		go HandleNewUser(conn)
 	}
 	// should return nil if correct, else err
 	return err
@@ -74,8 +75,8 @@ func HandleNewUser(conn net.Conn) {
 		if err != nil {
 			return
 		}
+		fmt.Println(userInput)
 
-		for 
 	}
 }
 
