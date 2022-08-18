@@ -2,13 +2,10 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"net"
 	"os"
 	"sync"
-
-	"net-cat/internal/models"
 )
 
 func main() {
@@ -28,23 +25,22 @@ func main() {
 	}
 }
 
-// should be in config
 // Returns True for Server mode, False for Client mode
 func IsServerMode() (bool, error) {
 	// hanlde flags
-	//-l listen
 	args := os.Args
 	if len(args) == 0 {
-		return false, nil // error should not be nil
+		return false, nil
 	}
 
 	return true, nil
 }
 
-// should be in internal/delivery server
+// write down all msg
+
 // Runs a Server
 func ServerMode() error {
-	lstn, err := net.Listen("tcp", "localhost:8080") // default or changable host
+	lstn, err := net.Listen("tcp", "localhost:8080")
 	if err != nil {
 		return err
 	}
@@ -54,8 +50,8 @@ func ServerMode() error {
 		return err
 	}
 
-	connMap := &sync.Map{}
-	// map[User]net.Conn
+	userMap := &sync.Map{}
+	// map[models.User]net.Conn
 	for {
 		conn, err := lstn.Accept()
 		if err != nil {
@@ -65,40 +61,57 @@ func ServerMode() error {
 		if err != nil {
 			break
 		}
-		newUser := models.User{}
-		connChan := make(chan interface{})
-		go HandleNewConn(conn, connChan)
-		connMap.Store(newUser, conn)
+
+		go HandleNewConn(conn, *userMap)
 	}
-	// should return nil if correct, else err
-	return err
+	return err // edit
 }
 
 //
-func HandleNewConn(conn net.Conn, connChan chan interface{}) {
+func HandleNewConn(conn net.Conn, users sync.Map) {
 	defer conn.Close()
 
-	conn.Write([]byte("[ENTER YOUR NAME]: ")) // do it in cycle
+	// create a user
+	// add user to sync map
+	name := "me"
+	// get name cycle
+	// cycle
+	conn.Write([]byte("[ENTER YOUR NAME]: "))
+	// send prev_msg if len(prev_msg)!=nil
+	users.Store(conn, name)
 	for {
 		userInput, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
-			// send signal two chanel he has exited
 			return
 		}
-		if true {
-			continue
-		} else {
-			// send messaeg
-			fmt.Println("send user input two chanel")
+		msg, err := AddTimeStamp(userInput)
+		if err != nil {
+			return
 		}
 
+		if err = WriteToChat(msg); err != nil {
+			return
+		}
+
+		if err = SaveMessage(msg); err != nil {
+			return
+		}
 	}
 }
 
-// should be in internal/delivery/client
+func AddTimeStamp(rawMsg string) (string, error) {
+	return "a", nil
+}
+
+func WriteToChat(msg string) error {
+	return nil
+}
+
+func SaveMessage(msg string) error {
+	return nil
+}
+
 // Runs a Client
 func ClientMode() error {
-	// connect to server with a given IP
-	// create a file with a penguin
 	return nil
 }
