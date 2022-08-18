@@ -73,10 +73,10 @@ func HandleNewConn(conn net.Conn, users sync.Map) {
 
 	// create a user
 	// add user to sync map
-	name := "me"
+
 	// get name cycle
 	// cycle
-	conn.Write([]byte("[ENTER YOUR NAME]: "))
+	name := "me"
 	// send prev_msg if len(prev_msg)!=nil
 	users.Store(conn, name)
 	for {
