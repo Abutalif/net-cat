@@ -2,10 +2,13 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"net"
 	"os"
+	"strings"
 	"sync"
+	"time"
 )
 
 func main() {
@@ -61,37 +64,61 @@ func ServerMode() error {
 		if err != nil {
 			break
 		}
-
-		go HandleNewConn(conn, *userMap)
+		fmt.Println(userMap)
+		go HandleNewConn(conn, userMap)
 	}
 	return err // edit
 }
 
-//
-func HandleNewConn(conn net.Conn, users sync.Map) {
+type client struct {
+	Name     string
+	IsActive bool
+}
+
+func HandleNewConn(conn net.Conn, users *sync.Map) {
 	defer conn.Close()
+	var name string
+	var err error
 
-	// create a user
-	// add user to sync map
+	for {
+		conn.Write([]byte("[ENTER YOUR NAME]: "))
+		name, err = bufio.NewReader(conn).ReadString('\n')
+		if err != nil {
+			conn.Write([]byte("Cannot Read name\n"))
+			continue
+		}
 
-	// get name cycle
-	// cycle
-	name := "me"
-	// send prev_msg if len(prev_msg)!=nil
-	users.Store(conn, name)
+		_, hasUser := users.LoadOrStore(name, conn)
+		if hasUser {
+			conn.Write([]byte("There is already a user with such name in the chat\n"))
+		} else {
+			break
+		}
+	}
+
+	user := &client{
+		Name:     name,
+		IsActive: true,
+	}
+	// send prev_ms	g if len(prev_msg)!=nil
+	users.Store(name, conn)
 	for {
 		userInput, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
 			return
 		}
-		msg, err := AddTimeStamp(userInput)
+		msg := AddTimeStamp(userInput, user.Name)
 		if err != nil {
 			return
 		}
-
-		if err = WriteToChat(msg); err != nil {
-			return
-		}
+		users.Range(func(key, value interface{}) bool {
+			if conn, ok := value.(net.Conn); ok {
+				if _, err := conn.Write([]byte(msg)); err != nil {
+					return false
+				}
+			}
+			return true
+		})
 
 		if err = SaveMessage(msg); err != nil {
 			return
@@ -99,12 +126,9 @@ func HandleNewConn(conn net.Conn, users sync.Map) {
 	}
 }
 
-func AddTimeStamp(rawMsg string) (string, error) {
-	return "a", nil
-}
-
-func WriteToChat(msg string) error {
-	return nil
+func AddTimeStamp(rawMsg string, name string) string {
+	timeStamp := time.Now().Format("2020-01-20 15:48:41")
+	return "[" + timeStamp + "][" + strings.Replace(name, "\n", "", -1) + "]" + rawMsg
 }
 
 func SaveMessage(msg string) error {
