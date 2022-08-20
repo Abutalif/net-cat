@@ -39,7 +39,7 @@ func (s *server) StartServer() error {
 	if err != nil {
 		return err
 	}
-
+	// TODO: create message log file that appends
 	for {
 		conn, err := lstn.Accept()
 		if err != nil {
@@ -66,6 +66,7 @@ func (s *server) handleNewConn(conn net.Conn) {
 	var goodName string
 	var err error
 	var name string
+	// var messageHist []byte
 	defer s.users.Delete(goodName)
 
 	// Reading username
@@ -76,20 +77,20 @@ func (s *server) handleNewConn(conn net.Conn) {
 			conn.Write([]byte("Cannot Read name\n"))
 			continue
 		}
-		if _, hasUser := s.users.LoadOrStore(name, conn); hasUser {
+		goodName = s.formatName(name) // check not empty
+		if _, hasUser := s.users.LoadOrStore(goodName, conn); hasUser {
 			conn.Write([]byte("There is already a user with such name in the chat\n"))
 		} else {
 			break
 		}
 	}
-	goodName = s.formatName(name)
 
 	// Sending old messages
-	oldMessages, err := os.ReadFile(s.logfile) // check availavility of the file
-	if err != nil {
-		log.Println(err)
-	}
-	conn.Write(oldMessages)
+	// oldMessages, err := os.ReadFile(s.logfile) // check availavility of the file
+	// if err != nil {
+	// 	log.Println(err)
+	// }
+	// conn.Write(oldMessages)
 
 	// Sending enterence notification
 	s.writeToChat(goodName + " has joined our chat...\n")
@@ -99,7 +100,7 @@ func (s *server) handleNewConn(conn net.Conn) {
 	for {
 		userInput, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
-			s.writeToChat(goodName + "has left our chat...")
+			s.writeToChat(goodName + " has left our chat...\n")
 			return
 		}
 		msg := s.addTimeStamp(userInput, name)
@@ -113,7 +114,8 @@ func (s *server) handleNewConn(conn net.Conn) {
 
 // adding the timestamp to the message
 func (s *server) addTimeStamp(rawMsg string, name string) string {
-	timeStamp := time.Now().Format("2020-01-20 15:48:41")
+	// use fmt.sprintf
+	timeStamp := time.Now().Format("2020-01-20 15:48:41") // add proper time format
 	return "[" + timeStamp + "][" + strings.Replace(name, "\n", "", -1) + "]" + rawMsg
 }
 
@@ -127,11 +129,14 @@ func (s *server) saveMessage(msg string) error {
 	if err := os.WriteFile(s.logfile, []byte(msg), 0o644); err != nil {
 		return err
 	}
+	// close it
+	// append it
 	return nil
 }
 
 // writing to the chat
 func (s *server) writeToChat(msg string) {
+	// send all, but myself
 	s.users.Range(func(key, value interface{}) bool {
 		if conn, ok := value.(net.Conn); ok {
 			if _, err := conn.Write([]byte(msg)); err != nil {
