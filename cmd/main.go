@@ -14,8 +14,8 @@ func main() {
 		return
 	}
 	if isServer {
-		err = usecases.NewServer("localhost:8080", "testfile.txt").StartServer()
 		log.Println("Listening on the port :8080")
+		err = usecases.NewServer("localhost:8080").StartServer()
 	} else {
 		// err = ClientMode()
 	}

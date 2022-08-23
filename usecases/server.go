@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"bufio"
-	"log"
 	"net"
 	"os"
 	"strings"
@@ -11,20 +10,22 @@ import (
 )
 
 type server struct {
-	address string
-	users   *sync.Map
-	logfile string
+	syncMaster  *sync.Mutex
+	users       map[string]net.Conn
+	address     string
+	messageHist []string
 }
 
 type Connecter interface {
 	StartServer() error
 }
 
-func NewServer(address, logfile string) Connecter {
+func NewServer(address string) Connecter {
 	return &server{
-		address: address,
-		users:   &sync.Map{},
-		logfile: logfile,
+		syncMaster:  &sync.Mutex{},
+		users:       make(map[string]net.Conn),
+		address:     address,
+		messageHist: make([]string, 0),
 	}
 }
 
@@ -39,7 +40,7 @@ func (s *server) StartServer() error {
 	if err != nil {
 		return err
 	}
-	// TODO: create message log file that appends
+
 	for {
 		conn, err := lstn.Accept()
 		if err != nil {
@@ -49,100 +50,114 @@ func (s *server) StartServer() error {
 		if err != nil {
 			return err
 		}
-		if numOfUsers <= 10 {
+		if numOfUsers < 10 {
 			numOfUsers++
 			go s.handleNewConn(conn)
 		} else {
 			conn.Write([]byte("Chat capacity full.\nGood bye!"))
 			conn.Close()
 		}
-
 	}
-
-	// somehere there should be a channel for sending all prev messages
 }
 
 func (s *server) handleNewConn(conn net.Conn) {
 	var goodName string
-	var err error
-	var name string
-	// var messageHist []byte
-	defer s.users.Delete(goodName)
-
-	// Reading username
 	for {
 		conn.Write([]byte("[ENTER YOUR NAME]: "))
-		name, err = bufio.NewReader(conn).ReadString('\n')
+		name, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
-			conn.Write([]byte("Cannot Read name\n"))
+			conn.Write([]byte("Cannot Read name\n")) // err
 			continue
 		}
-		goodName = s.formatName(name) // check not empty
-		if _, hasUser := s.users.LoadOrStore(goodName, conn); hasUser {
+		goodName = s.formatName(name)
+		if goodName == "" {
+			conn.Write([]byte("Empty name\n"))
+			continue
+		}
+
+		if s.hasUser(goodName) {
 			conn.Write([]byte("There is already a user with such name in the chat\n"))
+			continue
 		} else {
+			s.users[goodName] = conn
 			break
 		}
 	}
 
+	defer s.removeUser(goodName)
+
 	// Sending old messages
-	// oldMessages, err := os.ReadFile(s.logfile) // check availavility of the file
-	// if err != nil {
-	// 	log.Println(err)
-	// }
-	// conn.Write(oldMessages)
+	s.sendOldMessages(conn)
 
 	// Sending enterence notification
-	s.writeToChat(goodName + " has joined our chat...\n")
-	s.users.Store(goodName, conn)
+	s.writeToChat(goodName, goodName+" has joined our chat...\n")
 
 	// writing the messages
 	for {
 		userInput, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
-			s.writeToChat(goodName + " has left our chat...\n")
+			s.writeToChat(goodName, goodName+" has left our chat...\n")
 			return
 		}
-		msg := s.addTimeStamp(userInput, name)
-		s.writeToChat(msg)
 
-		if err = s.saveMessage(msg); err != nil {
-			log.Println(err)
+		if userInput == "\n" {
+			continue
+		}
+		msg := s.addTimeStamp(userInput, goodName)
+		s.writeToChat(goodName, msg)
+	}
+}
+
+// checks if there is a user with such name
+func (s *server) hasUser(name string) bool {
+	s.syncMaster.Lock()
+	defer s.syncMaster.Unlock()
+	for key := range s.users {
+		if key == name {
+			return true
 		}
 	}
+	return false
+}
+
+// removes user from the chat
+func (s *server) removeUser(name string) {
+	s.syncMaster.Lock()
+	defer s.syncMaster.Unlock()
+	s.users[name].Close()
+	delete(s.users, name)
 }
 
 // adding the timestamp to the message
 func (s *server) addTimeStamp(rawMsg string, name string) string {
-	// use fmt.sprintf
-	timeStamp := time.Now().Format("2020-01-20 15:48:41") // add proper time format
-	return "[" + timeStamp + "][" + strings.Replace(name, "\n", "", -1) + "]" + rawMsg
+	timeStamp := time.Now().Format("2006-01-02 15:04:05")
+	return "[" + timeStamp + "][" + name + "]" + ": " + rawMsg
+}
+
+// send old messages
+func (s *server) sendOldMessages(conn net.Conn) {
+	res := ""
+	for _, line := range s.messageHist {
+		res = res + line
+	}
+	s.syncMaster.Lock()
+	conn.Write([]byte(res))
+	defer s.syncMaster.Unlock()
 }
 
 // formating the name to look good
 func (s *server) formatName(name string) string {
-	return strings.Replace(name, "\n", "", -1)
-}
-
-// saving message to the chat
-func (s *server) saveMessage(msg string) error {
-	if err := os.WriteFile(s.logfile, []byte(msg), 0o644); err != nil {
-		return err
-	}
-	// close it
-	// append it
-	return nil
+	return strings.ReplaceAll(strings.ReplaceAll(name, "\n", ""), " ", "")
 }
 
 // writing to the chat
-func (s *server) writeToChat(msg string) {
-	// send all, but myself
-	s.users.Range(func(key, value interface{}) bool {
-		if conn, ok := value.(net.Conn); ok {
-			if _, err := conn.Write([]byte(msg)); err != nil {
-				return false
-			}
+func (s *server) writeToChat(sender, msg string) {
+	s.syncMaster.Lock()
+	defer s.syncMaster.Unlock()
+	for key, val := range s.users {
+		if key != sender {
+			val.Write([]byte(msg))
 		}
-		return true
-	})
+	}
+	s.messageHist = append(s.messageHist, msg)
 }
