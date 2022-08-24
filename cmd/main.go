@@ -1,37 +1,26 @@
 package main
 
 import (
-	"log"
-	"os"
+	"fmt"
 
+	"net-cat/config"
 	"net-cat/usecases"
 )
 
 func main() {
-	isServer, err := IsServerMode()
+	port, isServer, err := config.IsServerMode()
 	if err != nil {
-		log.Println(err)
+		fmt.Println("[USAGE]: ./TCPChat $port")
 		return
 	}
 	if isServer {
-		log.Println("Listening on the port :8080")
-		err = usecases.NewServer("localhost:8080").StartServer()
+		fmt.Printf("Listening on the port %v\n", port)
+		err = usecases.NewServer("localhost" + port).StartServer()
 	} else {
-		// err = ClientMode()
+		err = usecases.NewClient("localhost" + port).Connect()
 	}
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 		return
 	}
-}
-
-// Returns True for Server mode, False for Client mode
-func IsServerMode() (bool, error) {
-	// hanlde flags
-	args := os.Args
-	if len(args) == 0 {
-		return false, nil
-	}
-
-	return true, nil
 }
