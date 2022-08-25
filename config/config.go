@@ -14,8 +14,8 @@ func IsServerMode() (string, bool, error) {
 
 	case 1:
 		port := args[0]
-		if len(port) == 5 && port[0] == ':' && isNumeric(port[1:]) {
-			return port, true, nil
+		if len(port) == 4 && isNumeric(port) {
+			return ":" + port, true, nil
 		} else {
 			return port, true, errors.New("not a port")
 		}
@@ -26,8 +26,8 @@ func IsServerMode() (string, bool, error) {
 			return ":0000", false, errors.New("wrong usage")
 		} else {
 			port := args[1]
-			if len(port) == 5 && port[0] == ':' && isNumeric(port[1:]) {
-				return port, false, nil
+			if len(port) == 4 && isNumeric(port) {
+				return ":" + port, false, nil
 			} else {
 				return port, false, errors.New("not a port")
 			}

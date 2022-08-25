@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"net"
-	"os"
 )
 
 type client struct {
@@ -22,31 +21,27 @@ func NewClient(address string) Talker {
 }
 
 func (c *client) Connect() error {
-	fmt.Println("Starting client mode")
+	// fmt.Println("Starting client mode")
 	conn, err := net.Dial("tcp", c.address)
-	msgs := make([]byte, 10000)
 	if err != nil {
 		return err
 	}
 
-	n, err := conn.Read(msgs)
-	if err != nil {
-		return err
-	}
+	go inputReader(conn)
 
-	fmt.Print(n)
-	fmt.Println(string(msgs[:n]))
-	sc := bufio.NewScanner(os.Stdin)
-	for sc.Scan() {
-		_, err = conn.Write([]byte(sc.Text()))
+	for {
+		inMsg, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
-			return err
+			return nil
 		}
-		n, err := conn.Read(msgs)
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(msgs[:n]))
+		fmt.Println(inMsg)
 	}
-	return nil
+}
+
+func inputReader(conn net.Conn) {
+	outMsg, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		return
+	}
+	conn.Write([]byte(outMsg))
 }
