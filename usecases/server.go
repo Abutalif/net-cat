@@ -66,7 +66,7 @@ func (s *server) handleNewConn(conn net.Conn) {
 		conn.Write([]byte("[ENTER YOUR NAME]: "))
 		name, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
-			conn.Write([]byte("Cannot Read name\n")) // err
+			conn.Write([]byte("Cannot Read name\n"))
 			continue
 		}
 		goodName = s.formatName(name)
@@ -93,6 +93,7 @@ func (s *server) handleNewConn(conn net.Conn) {
 	s.writeToChat(goodName, goodName+" has joined our chat...\n")
 
 	// writing the messages
+	conn.Write([]byte(s.addTimeStamp("", goodName)))
 	for {
 		userInput, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
