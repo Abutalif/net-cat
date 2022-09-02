@@ -57,7 +57,6 @@ func (s *server) StartServer() error {
 			conn.Write([]byte("Chat capacity full.\nGood bye!"))
 			conn.Close()
 		}
-		fmt.Println(len(s.users))
 		s.syncMaster.Unlock()
 
 	}
@@ -89,8 +88,6 @@ func (s *server) handleNewConn(conn net.Conn) {
 
 	}
 
-	// defer s.removeUser(goodName)
-
 	// Sending old messages
 	s.sendOldMessages(conn)
 
@@ -98,7 +95,6 @@ func (s *server) handleNewConn(conn net.Conn) {
 	s.writeToChat(goodName, goodName+" has joined our chat...\n", true)
 
 	// writing the messages
-	// conn.Write([]byte(s.addTimeStamp("", goodName)))
 	for {
 		userInput, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
