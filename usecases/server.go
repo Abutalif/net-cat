@@ -15,10 +15,7 @@ type server struct {
 	users       map[string]net.Conn
 	address     string
 	messageHist []string
-	// lastMessage chan string
 }
-
-// maybe add broadcaster
 
 type Connecter interface {
 	StartServer() error
@@ -30,7 +27,6 @@ func NewServer(address string) Connecter {
 		users:       make(map[string]net.Conn),
 		address:     address,
 		messageHist: make([]string, 0),
-		// lastMessage: make(chan string),
 	}
 }
 
@@ -93,7 +89,7 @@ func (s *server) handleNewConn(conn net.Conn) {
 
 	}
 
-	defer s.removeUser(goodName)
+	// defer s.removeUser(goodName)
 
 	// Sending old messages
 	s.sendOldMessages(conn)
@@ -183,5 +179,9 @@ func (s *server) writeToChat(sender, msg string, statusMsg bool) {
 		val.Write([]byte(s.addTimeStamp(key)))
 
 	}
-	s.messageHist = append(s.messageHist, prefix+msg)
+	if statusMsg {
+		s.messageHist = append(s.messageHist, msg)
+	} else {
+		s.messageHist = append(s.messageHist, prefix+msg)
+	}
 }
