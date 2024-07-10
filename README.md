@@ -1,10 +1,14 @@
 # Description:
 
-This project implements a TCP chat that allows up to 10 people to communicate using termnial window.
+This project implements a simple TCP chat that allows up to 10 people to communicate using termnial window. Clone of UNIX util **net-cat** (**nc**)
 
-# Authors
+# Features:
 
-- [@Abutalif](https://01.alem.school/git/Abutalif) and [@mixturegg](https://01.alem.school/git/mixturegg)
+1. Can work as both client and server/host.
+2. Compatible with the original **nc**.
+3. Ensures uniqueness of usernames.
+4. Stores history of the current chat session. Messages visible even after leaving and logging back in. History is shown for all users.
+5. Awesome Linux penguin for all new users.
 
 
 # Usage:
@@ -35,3 +39,14 @@ This project implements a TCP chat that allows up to 10 people to communicate us
     ```console
     nc localhost <port_number>
     ```
+
+
+# Suggestions:
+You are welcome to try and break the working of the app. Key points:
+1. Try logging in with more than 10 users.
+2. Try entering with the same log-in several times.
+3. Try sending empty messages.
+
+# Authors
+
+- [@Abutalif](https://01.alem.school/git/Abutalif)
